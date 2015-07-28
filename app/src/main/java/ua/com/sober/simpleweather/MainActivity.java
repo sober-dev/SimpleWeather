@@ -17,6 +17,13 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -29,7 +36,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements OnMapReadyCallback {
 
     private static final String jsonUrl = "http://api.openweathermap.org/data/2.5/weather?q=";
     private static String units = "&units=metric";
@@ -37,6 +44,8 @@ public class MainActivity extends Activity {
     private EditText searchCity;
     private LinearLayout iconsLayout;
     private static final String DEBUG_TAG = "debug";
+    private GoogleMap map;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,6 +68,11 @@ public class MainActivity extends Activity {
             });
             actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
         }
+
+//        Google Map
+        MapFragment mapFragment = (MapFragment) getFragmentManager().findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+        map = mapFragment.getMap();
 
     }
 
@@ -86,6 +100,17 @@ public class MainActivity extends Activity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+    }
+
+    private void showCityOnMap(LatLng latLng) {
+        if (map != null) {
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
+            map.animateCamera(CameraUpdateFactory.zoomTo(10), 2000, null);
+        }
     }
 
     private class getWeatherInfoTask extends AsyncTask<String, Void, String> {
@@ -140,12 +165,15 @@ public class MainActivity extends Activity {
             Log.i(DEBUG_TAG, strJson);
 
             parseJson(strJson);
+
 //            parseJson("{\"coord\":{\"lon\":30.5,\"lat\":50.45},\"weather\":[{\"id\":520,\"main\":\"Rain\",\"description\":\"light intensity shower rain\",\"icon\":\"09d\"},{\"id\":701,\"main\":\"Mist\",\"description\":\"mist\",\"icon\":\"50d\"}],\"base\":\"stations\",\"main\":{\"temp\":13.2,\"pressure\":1006,\"humidity\":100,\"temp_max\":18},\"visibility\":3300,\"wind\":{\"speed\":3,\"deg\":300},\"clouds\":{\"all\":90},\"dt\":1438067252,\"sys\":{\"type\":1,\"id\":7358,\"message\":0.0081,\"country\":\"UA\",\"sunrise\":1438049986,\"sunset\":1438105700},\"id\":696050,\"name\":\"Pushcha-Voditsa\",\"cod\":200}");
 
         }
 
         private void parseJson(String strJson) {
             JSONObject mainJsonObject = null;
+            double longitude = 0;
+            double latitude = 0;
 
             try {
                 mainJsonObject = new JSONObject(strJson);
@@ -154,10 +182,13 @@ public class MainActivity extends Activity {
                     JSONObject coord = mainJsonObject.getJSONObject("coord");
                     if (coord.has("lon") && !coord.isNull("lon")) {
                         weatherInfo.append("City geo location(longitude): " + coord.getString("lon"));
+                        longitude = coord.getDouble("lon");
                     }
                     if (coord.has("lat") && !coord.isNull("lat")) {
                         weatherInfo.append("\nCity geo location(latitude): " + coord.getString("lat"));
+                        latitude = coord.getDouble("lat");
                     }
+                    showCityOnMap(new LatLng(latitude, longitude));
                 }
 
                 if (mainJsonObject.has("weather") && !mainJsonObject.isNull("weather")) {
