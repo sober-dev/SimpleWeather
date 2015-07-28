@@ -2,7 +2,7 @@
     <string name="app_name">Simple Weather</string>
 
     <string name="action_settings">Settings</string>
-    <string name="search_city_hint">London</string>
+    <string name="search_city_hint">Enter city name</string>
     <string name="get_weather_btn">Get Weather</string>
     <string name="actionbar_text">Weather in:</string>
 </resources>

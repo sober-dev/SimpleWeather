@@ -27,9 +27,16 @@
             </intent-filter>
         </activity>
 
+        <!--release api key-->
+        <!--<meta-data-->
+            <!--android:name="com.google.android.geo.API_KEY"-->
+            <!--android:value="AIzaSyCqzEnNYeP3_Cd9EXBNZxtYQXv3GQsbhpw" />-->
+
+        <!--debug api key mac-->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyBfO7RKds5SYYUM3qOkT4-aVcaMBrm0YfM" />
+
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />

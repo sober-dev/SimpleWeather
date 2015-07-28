@@ -22,7 +22,6 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MarkerOptions;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -62,7 +61,9 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             searchCity.setOnEditorActionListener(new TextView.OnEditorActionListener() {
                 @Override
                 public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+
                     new getWeatherInfoTask().execute(jsonUrl + v.getText() + units);
+
                     return false;
                 }
             });
@@ -89,6 +90,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
                 return true;
             }
             case R.id.getWeatherBtn: {
+
                 new getWeatherInfoTask().execute(jsonUrl + searchCity.getText() + units);
 
 //                Hide keyboard
