@@ -1,13 +1,20 @@
 package ua.com.sober.simpleweather;
 
+import android.app.ActionBar;
 import android.app.Activity;
+import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.ViewGroup.LayoutParams;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.json.JSONArray;
@@ -22,38 +29,60 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-
 public class MainActivity extends Activity {
 
-    private static final String jsonUrl = "http://api.openweathermap.org/data/2.5/weather?q=Emmen&units=metric";
-    private static String basicImgUrl = "http://api.openweathermap.org/img/w/";
+    private static final String jsonUrl = "http://api.openweathermap.org/data/2.5/weather?q=";
+    private static String units = "&units=metric";
     private TextView weatherInfo;
-    private ImageView weatherIcon;
+    private EditText searchCity;
+    private LinearLayout iconsLayout;
+    private static final String DEBUG_TAG = "debug";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        weatherIcon = (ImageView) findViewById(R.id.weatherIconImageView);
+        iconsLayout = (LinearLayout) findViewById(R.id.iconsLayout);
         weatherInfo = (TextView) findViewById(R.id.weatherInfoTextView);
 
-        new getWeatherInfoTask().execute(jsonUrl);
+//        Custom ActionBar
+        ActionBar actionBar = getActionBar();
+        if (actionBar != null) {
+            actionBar.setCustomView(R.layout.actionbar_view);
+            searchCity = (EditText) actionBar.getCustomView().findViewById(R.id.searchCityEditText);
+            searchCity.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+                @Override
+                public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                    new getWeatherInfoTask().execute(jsonUrl + v.getText() + units);
+                    return false;
+                }
+            });
+            actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
+        }
+
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
+        switch (item.getItemId()) {
+            case R.id.action_settings: {
+                return true;
+            }
+            case R.id.getWeatherBtn: {
+                new getWeatherInfoTask().execute(jsonUrl + searchCity.getText() + units);
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+//                Hide keyboard
+                InputMethodManager inputManager = (InputMethodManager) this.getSystemService(Context.INPUT_METHOD_SERVICE);
+                inputManager.hideSoftInputFromWindow(this.getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+
+                return true;
+            }
         }
 
         return super.onOptionsItemSelected(item);
@@ -64,7 +93,15 @@ public class MainActivity extends Activity {
         private HttpURLConnection urlConnection = null;
         private BufferedReader bufferedReader = null;
         private String resultJson = "";
-        private static final String DEBUG_TAG = "getWeatherInfoTask";
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            if (iconsLayout.getChildCount() > 0) {
+                iconsLayout.removeAllViews();
+            }
+            weatherInfo.setText("");
+        }
 
         @Override
         protected String doInBackground(String... params) {
@@ -84,6 +121,7 @@ public class MainActivity extends Activity {
                 inputStream = urlConnection.getInputStream();
                 bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
                 resultJson = bufferedReader.readLine();
+                inputStream.close();
                 bufferedReader.close();
             } catch (MalformedURLException e) {
                 Log.d(DEBUG_TAG, "Something wrong with URL...");
@@ -102,8 +140,8 @@ public class MainActivity extends Activity {
             Log.i(DEBUG_TAG, strJson);
 
             parseJson(strJson);
+//            parseJson("{\"coord\":{\"lon\":30.5,\"lat\":50.45},\"weather\":[{\"id\":520,\"main\":\"Rain\",\"description\":\"light intensity shower rain\",\"icon\":\"09d\"},{\"id\":701,\"main\":\"Mist\",\"description\":\"mist\",\"icon\":\"50d\"}],\"base\":\"stations\",\"main\":{\"temp\":13.2,\"pressure\":1006,\"humidity\":100,\"temp_max\":18},\"visibility\":3300,\"wind\":{\"speed\":3,\"deg\":300},\"clouds\":{\"all\":90},\"dt\":1438067252,\"sys\":{\"type\":1,\"id\":7358,\"message\":0.0081,\"country\":\"UA\",\"sunrise\":1438049986,\"sunset\":1438105700},\"id\":696050,\"name\":\"Pushcha-Voditsa\",\"cod\":200}");
 
-            new getIconTask().execute(basicImgUrl);
         }
 
         private void parseJson(String strJson) {
@@ -114,30 +152,30 @@ public class MainActivity extends Activity {
 
                 if (mainJsonObject.has("coord") && !mainJsonObject.isNull("coord")) {
                     JSONObject coord = mainJsonObject.getJSONObject("coord");
-//                    weatherInfo.append("\tCity geo location");
                     if (coord.has("lon") && !coord.isNull("lon")) {
-                        weatherInfo.append("\nlongitude: " + coord.getString("lon"));
+                        weatherInfo.append("City geo location(longitude): " + coord.getString("lon"));
                     }
                     if (coord.has("lat") && !coord.isNull("lat")) {
-                        weatherInfo.append("\nlatitude: " + coord.getString("lat"));
+                        weatherInfo.append("\nCity geo location(latitude): " + coord.getString("lat"));
                     }
                 }
 
                 if (mainJsonObject.has("weather") && !mainJsonObject.isNull("weather")) {
                     JSONArray weatherArr = mainJsonObject.getJSONArray("weather");
-                    if (weatherArr.length() > 0) {
-                        JSONObject weatherObj = weatherArr.getJSONObject(0);
+                    for (int i = 0; i < weatherArr.length(); i++) {
+                        weatherInfo.append("\nWeather(" + (i + 1) + "): ");
+                        JSONObject weatherObj = weatherArr.getJSONObject(i);
                         if (weatherObj.has("id") && !weatherObj.isNull("id")) {
-                            weatherInfo.append("\nWeather condition id: " + weatherObj.getString("id"));
+                            weatherInfo.append("\n\tWeather condition id: " + weatherObj.getString("id"));
                         }
                         if (weatherObj.has("main") && !weatherObj.isNull("main")) {
-                            weatherInfo.append("\nGroup of weather parameters: " + weatherObj.getString("main"));
+                            weatherInfo.append("\n\tGroup of weather parameters: " + weatherObj.getString("main"));
                         }
                         if (weatherObj.has("description") && !weatherObj.isNull("description")) {
-                            weatherInfo.append("\nWeather condition within the group: " + weatherObj.getString("description"));
+                            weatherInfo.append("\n\tWeather condition within the group: " + weatherObj.getString("description"));
                         }
                         if (weatherObj.has("icon") && !weatherObj.isNull("icon")) {
-                            basicImgUrl = basicImgUrl + weatherObj.getString("icon") + ".png";
+                            new getIconTask().execute("http://api.openweathermap.org/img/w/" + weatherObj.getString("icon") + ".png");
                         }
                     }
                 }
@@ -252,7 +290,6 @@ public class MainActivity extends Activity {
     private class getIconTask extends AsyncTask<String, Void, Drawable> {
 
         private Drawable drawable = null;
-        private static final String DEBUG_TAG = "getIconTask";
 
         @Override
         protected Drawable doInBackground(String... params) {
@@ -270,9 +307,9 @@ public class MainActivity extends Activity {
         protected void onPostExecute(Drawable drawable) {
             super.onPostExecute(drawable);
             if (drawable != null) {
-                weatherIcon.setImageDrawable(drawable);
+                setWeatherIcon(drawable);
             } else {
-                weatherIcon.setImageResource(R.mipmap.ic_launcher);
+                setWeatherIcon(drawable);
             }
         }
 
@@ -280,6 +317,7 @@ public class MainActivity extends Activity {
             try {
                 InputStream inputStream = (InputStream) new URL(url).getContent();
                 drawable = Drawable.createFromStream(inputStream, "src name");
+                inputStream.close();
             } catch (MalformedURLException e) {
                 Log.d(DEBUG_TAG, "Something wrong with URL...");
                 e.printStackTrace();
@@ -289,5 +327,13 @@ public class MainActivity extends Activity {
             }
             return drawable;
         }
+
+        private void setWeatherIcon(Drawable drawable) {
+            ImageView iconImage = new ImageView(MainActivity.this);
+            iconImage.setLayoutParams(new LayoutParams(100, 100));
+            iconImage.setImageDrawable(drawable);
+            iconsLayout.addView(iconImage);
+        }
     }
+
 }

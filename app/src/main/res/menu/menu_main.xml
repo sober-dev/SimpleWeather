@@ -6,4 +6,9 @@
         android:orderInCategory="100"
         android:showAsAction="never"
         android:title="@string/action_settings" />
+    <item
+        android:id="@+id/getWeatherBtn"
+        android:icon="@android:drawable/ic_popup_sync"
+        android:showAsAction="ifRoom"
+        android:title="@string/get_weather_btn"/>
 </menu>
