@@ -2,7 +2,12 @@ package ua.com.sober.simpleweather;
 
 import android.app.ActionBar;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -38,13 +43,18 @@ import java.net.URL;
 public class MainActivity extends Activity implements OnMapReadyCallback {
 
     private static final String jsonUrl = "http://api.openweathermap.org/data/2.5/weather?q=";
-    private static String units = "&units=metric";
+    private static String units = "";
+    public static final String APP_PREFERENCES = "mysettings";
+    public static final String APP_PREFERENCES_UNITS = "units";
+    private SharedPreferences mSettings;
+    private final CharSequence[] settingsItems = {"Standard", "metric", "imperial"};
     private TextView weatherInfo;
     private EditText searchCity;
     private LinearLayout iconsLayout;
     private static final String DEBUG_TAG = "debug";
+    private static final String ICONS_KEY = "iconsKey";
+    private static final String WEATHER_INFO_KEY = "weatherInfo";
     private GoogleMap map;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,6 +62,25 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         setContentView(R.layout.activity_main);
         iconsLayout = (LinearLayout) findViewById(R.id.iconsLayout);
         weatherInfo = (TextView) findViewById(R.id.weatherInfoTextView);
+        mSettings = getSharedPreferences(APP_PREFERENCES, Context.MODE_PRIVATE);
+
+//        App settings
+        if (mSettings.contains(APP_PREFERENCES_UNITS)) {
+            units = mSettings.getString(APP_PREFERENCES_UNITS, "");
+        }
+
+//        Restore View state
+        if (savedInstanceState != null) {
+            weatherInfo.setText(savedInstanceState.getCharSequence("weatherInfo"));
+
+            if (savedInstanceState.getParcelable(ICONS_KEY) != null) {
+                Bitmap tmp = savedInstanceState.getParcelable(ICONS_KEY);
+                ImageView iconImages = new ImageView(this);
+                iconImages.setImageDrawable(new BitmapDrawable(getResources(), tmp));
+                iconsLayout.addView(iconImages);
+            }
+
+        }
 
 //        Custom ActionBar
         ActionBar actionBar = getActionBar();
@@ -78,6 +107,35 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     }
 
     @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        outState.putCharSequence(WEATHER_INFO_KEY, weatherInfo.getText());
+
+        iconsLayout.setDrawingCacheEnabled(true);
+        iconsLayout.buildDrawingCache(true);
+        Bitmap iconsBitmap = Bitmap.createBitmap(iconsLayout.getDrawingCache());
+        iconsLayout.setDrawingCacheEnabled(false);
+        outState.putParcelable(ICONS_KEY, iconsBitmap);
+
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+//        Save settings
+        SharedPreferences.Editor editor = mSettings.edit();
+        editor.putString(APP_PREFERENCES_UNITS, units);
+        editor.apply();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
@@ -87,6 +145,47 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.action_settings: {
+
+//                Choice units format
+                int checkedItem;
+                switch (units) {
+                    case "":
+                        checkedItem = 0;
+                        break;
+                    case "&units=metric":
+                        checkedItem = 1;
+                        break;
+                    case "&units=imperial":
+                        checkedItem = 2;
+                        break;
+                    default:
+                        checkedItem = -1;
+                        break;
+                }
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setTitle("Units format");
+                builder.setCancelable(true);
+                builder.setSingleChoiceItems(settingsItems, checkedItem, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        switch (which) {
+                            case 0:
+                                units = "";
+                                break;
+                            case 1:
+                                units = "&units=metric";
+                                break;
+                            case 2:
+                                units = "&units=imperial";
+                                break;
+                            default:
+                                break;
+                        }
+                        dialog.dismiss();
+                    }
+                });
+                builder.show();
+
                 return true;
             }
             case R.id.getWeatherBtn: {
@@ -115,6 +214,13 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         }
     }
 
+    private void setWeatherIcon(Drawable drawable) {
+        ImageView iconImage = new ImageView(this);
+        iconImage.setLayoutParams(new LayoutParams(100, 100));
+        iconImage.setImageDrawable(drawable);
+        iconsLayout.addView(iconImage);
+    }
+
     private class getWeatherInfoTask extends AsyncTask<String, Void, String> {
 
         private HttpURLConnection urlConnection = null;
@@ -124,6 +230,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
+//            Clear old info
             if (iconsLayout.getChildCount() > 0) {
                 iconsLayout.removeAllViews();
             }
@@ -168,6 +275,7 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
             parseJson(strJson);
 
+//            Test JSON string
 //            parseJson("{\"coord\":{\"lon\":30.5,\"lat\":50.45},\"weather\":[{\"id\":520,\"main\":\"Rain\",\"description\":\"light intensity shower rain\",\"icon\":\"09d\"},{\"id\":701,\"main\":\"Mist\",\"description\":\"mist\",\"icon\":\"50d\"}],\"base\":\"stations\",\"main\":{\"temp\":13.2,\"pressure\":1006,\"humidity\":100,\"temp_max\":18},\"visibility\":3300,\"wind\":{\"speed\":3,\"deg\":300},\"clouds\":{\"all\":90},\"dt\":1438067252,\"sys\":{\"type\":1,\"id\":7358,\"message\":0.0081,\"country\":\"UA\",\"sunrise\":1438049986,\"sunset\":1438105700},\"id\":696050,\"name\":\"Pushcha-Voditsa\",\"cod\":200}");
 
         }
@@ -341,8 +449,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             super.onPostExecute(drawable);
             if (drawable != null) {
                 setWeatherIcon(drawable);
-            } else {
-                setWeatherIcon(drawable);
             }
         }
 
@@ -361,12 +467,6 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
             return drawable;
         }
 
-        private void setWeatherIcon(Drawable drawable) {
-            ImageView iconImage = new ImageView(MainActivity.this);
-            iconImage.setLayoutParams(new LayoutParams(100, 100));
-            iconImage.setImageDrawable(drawable);
-            iconsLayout.addView(iconImage);
-        }
     }
 
 }
