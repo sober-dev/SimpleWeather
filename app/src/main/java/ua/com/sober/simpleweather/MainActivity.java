@@ -44,8 +44,8 @@ public class MainActivity extends Activity implements OnMapReadyCallback {
 
     private static final String jsonUrl = "http://api.openweathermap.org/data/2.5/weather?q=";
     private static String units = "";
-    public static final String APP_PREFERENCES = "mysettings";
-    public static final String APP_PREFERENCES_UNITS = "units";
+    private static final String APP_PREFERENCES = "mysettings";
+    private static final String APP_PREFERENCES_UNITS = "units";
     private SharedPreferences mSettings;
     private final CharSequence[] settingsItems = {"Standard", "metric", "imperial"};
     private TextView weatherInfo;
